@@ -1,0 +1,26 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@google/genai": "^1.25.0",
+    "@google/generative-ai": "^0.24.1",
+    "@huggingface/inference": "^4.11.3",
+    "@langchain/community": "^0.3.57",
+    "@langchain/google-genai": "^0.2.18",
+    "@langchain/openai": "^0.6.16",
+    "@pinecone-database/pinecone": "^6.1.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "langchain": "^0.3.36"
+  },
+  "name": "rag-example-768",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

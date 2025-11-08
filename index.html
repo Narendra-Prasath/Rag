@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document QA Chatbot</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-primary': '#0D47A1', // Dark Blue
+                        'brand-accent': '#FFD700', // Gold/Yellow
+                        'bg-light': '#f8fafc',
+                        'card-gray': '#e2e8f0',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+        }
+        .container-shadow {
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+        }
+        .scrollable-log {
+            max-height: 20rem;
+            min-height: 10rem;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        .active-dot {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-10">
+
+    <div class="max-w-5xl mx-auto bg-bg-light rounded-2xl container-shadow">
+        
+        <!-- Header -->
+        <header class="p-6 sm:p-8 bg-brand-primary text-white rounded-t-2xl">
+            <h1 class="text-3xl font-extrabold flex items-center">
+                <svg class="w-8 h-8 mr-3 text-brand-accent" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z"></path><path fill-rule="evenodd" d="M4 5a2 2 0 012-2 1 1 0 001-1h2a1 1 0 001-1h2a1 1 0 001-1h2a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 2a1 1 0 000 2h6a1 1 0 100-2H7z" clip-rule="evenodd"></path></svg>
+                RAG Document Q&A System
+            </h1>
+            <p class="text-sm mt-1 text-gray-300">This client communicates with your Node.js backend running on <code class="bg-gray-700 px-1 rounded">http://localhost:3000</code>.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 p-6 sm:p-8 gap-8">
+            
+            <!-- Column 1: Indexing (Steps 1-3) -->
+            <div id="indexing-panel" class="lg:col-span-1 p-5 rounded-xl border border-gray-300 bg-white shadow-lg h-full">
+                <h2 class="text-xl font-bold text-brand-primary mb-4">1. Index Document</h2>
+                
+                <p class="text-xs text-gray-500 mb-3">Upload a <code class="bg-card-gray px-1 rounded">.txt</code> file or paste text. This triggers the **Chunking, Embedding, and Pinecone storage** on your backend.</p>
+                
+                <input type="file" id="fileUpload" accept=".txt" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-brand-accent/20 file:text-brand-primary hover:file:bg-brand-accent/40" onchange="readFile()">
+
+                <textarea id="documentText" class="w-full h-40 p-3 mt-4 mb-4 rounded-lg border border-gray-300 focus:ring-brand-primary focus:border-brand-primary resize-none placeholder-gray-500 text-sm" placeholder="Or paste your document text here..."></textarea>
+                
+                <button id="indexButton" class="w-full py-3 bg-brand-primary hover:bg-brand-primary/90 transition duration-300 text-white font-semibold rounded-lg shadow-md disabled:opacity-50 flex items-center justify-center" onclick="handleIndexDocument(this)">
+                    <span id="indexStatusDot" class="w-3 h-3 rounded-full mr-2 bg-gray-400"></span>
+                    Index Document
+                </button>
+            </div>
+
+            <!-- Column 2 & 3: Querying (Steps 4-5) & Results -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Query Input -->
+                <div class="p-5 rounded-xl border border-gray-300 bg-white shadow-lg">
+                    <h2 class="text-xl font-bold text-brand-primary mb-4">2. Ask a Question</h2>
+                    
+                    <input type="text" id="questionInput" class="w-full p-3 rounded-lg border border-gray-300 focus:ring-brand-primary focus:border-brand-primary disabled:bg-gray-100" placeholder="e.g., What was the main reason for the revenue increase?">
+                    
+                    <button id="queryButton" class="w-full py-3 bg-brand-accent hover:bg-brand-accent/80 transition duration-300 text-brand-primary font-semibold rounded-lg shadow-md disabled:opacity-50 mt-4 flex items-center justify-center" onclick="handleQuery(this)">
+                        <span id="queryStatusSpinner" class="hidden animate-spin rounded-full h-5 w-5 border-t-2 border-r-2 border-brand-primary mr-2"></span>
+                        Get RAG Answer
+                    </button>
+                </div>
+
+                <!-- Results and Logs -->
+                <div class="p-5 rounded-xl border border-gray-300 bg-white shadow-lg">
+                    <h2 class="text-xl font-bold text-brand-primary mb-4">3. RAG Output & Pipeline Log</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Final Answer -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-700 mb-2">LLM Answer</h3>
+                            <div id="answerArea" class="scrollable-log bg-card-gray p-4 rounded-lg text-sm text-gray-800">
+                                <p class="text-gray-500">The final answer, generated by the LLM based on retrieved context, will appear here.</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Pipeline Log -->
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-700 mb-2">Backend Connection Log</h3>
+                            <div id="logArea" class="scrollable-log bg-gray-900 p-4 rounded-lg text-sm text-gray-200 space-y-1">
+                                <p class="text-green-400">System Ready. Awaiting backend connection at http://localhost:3000...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const BACKEND_URL = 'http://localhost:3000';
+        
+        // --- UI Elements ---
+        const logArea = document.getElementById('logArea');
+        const answerArea = document.getElementById('answerArea');
+        const documentText = document.getElementById('documentText');
+        const indexButton = document.getElementById('indexButton');
+        const queryButton = document.getElementById('queryButton');
+        const indexStatusDot = document.getElementById('indexStatusDot');
+        const queryStatusSpinner = document.getElementById('queryStatusSpinner');
+
+        /**
+         * Utility to append messages to the log area.
+         */
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            let color = 'text-gray-300';
+            if (type === 'success') color = 'text-green-400';
+            if (type === 'error') color = 'text-red-400';
+            if (type === 'step') color = 'text-cyan-400';
+
+            const logEntry = document.createElement('p');
+            logEntry.className = color;
+            logEntry.innerHTML = `<span class="text-gray-500">[${time}]</span> ${message}`;
+            logArea.appendChild(logEntry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        /**
+         * Reads the uploaded file content into the textarea.
+         */
+        function readFile() {
+            const fileInput = document.getElementById('fileUpload');
+            const file = fileInput.files[0];
+            
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    documentText.value = e.target.result;
+                    log(`File loaded: ${file.name}. Ready for Indexing.`, 'info');
+                };
+                reader.onerror = function() {
+                    log('Error reading file.', 'error');
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // --- RAG Step 1-3: Indexing Document via Backend API ---
+        async function handleIndexDocument(button) {
+            const docContent = documentText.value.trim();
+            if (!docContent) {
+                log('Please paste or upload a document first.', 'error');
+                return;
+            }
+
+            // Disable buttons and set loading state
+            button.disabled = true;
+            queryButton.disabled = true;
+            indexStatusDot.classList.remove('bg-red-500', 'bg-green-500');
+            indexStatusDot.classList.add('active-dot', 'bg-brand-accent');
+            answerArea.innerHTML = '<p class="text-gray-500">Indexing in progress. Check the log for backend steps...</p>';
+            logArea.innerHTML = ''; // Clear logs
+
+            try {
+                log('➡️ Indexing: Calling backend endpoint /api/index-document', 'step');
+                
+                const response = await fetch(`${BACKEND_URL}/api/index-document`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ documentText: docContent })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || `Server responded with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                
+                log(`✅ Indexing Complete! ${result.message}`, 'success');
+                indexStatusDot.classList.remove('active-dot', 'bg-brand-accent');
+                indexStatusDot.classList.add('bg-green-500');
+                answerArea.innerHTML = '<p class="text-gray-800 font-semibold">Document indexed successfully. Ask your question!</p>';
+
+            } catch (error) {
+                log(`❌ Indexing failed: ${error.message}`, 'error');
+                indexStatusDot.classList.remove('active-dot', 'bg-brand-accent');
+                indexStatusDot.classList.add('bg-red-500');
+                answerArea.innerHTML = `<p class="text-red-500">Indexing Failed. Ensure your Node.js backend is running on port 3000.</p>`;
+            } finally {
+                // Restore buttons
+                button.disabled = false;
+                queryButton.disabled = false;
+            }
+        }
+
+
+        // --- RAG Step 4-5: Query and Answer via Backend API ---
+        async function handleQuery(button) {
+            const question = document.getElementById('questionInput').value.trim();
+            
+            if (!question) {
+                log('Please enter a question.', 'error');
+                return;
+            }
+
+            // Disable buttons and show loading state
+            button.disabled = true;
+            indexButton.disabled = true;
+            queryStatusSpinner.classList.remove('hidden');
+            answerArea.innerHTML = '<p class="text-gray-500">Processing RAG pipeline (Retrieval -> Generation) via backend...</p>';
+            
+            try {
+                log('\n--- PHASE 2: STARTING RAG QUERY ---');
+                log('➡️ Retrieval & Generation: Calling backend endpoint /api/answer-question', 'step');
+
+                const response = await fetch(`${BACKEND_URL}/api/answer-question`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || `Server responded with status ${response.status}`);
+                }
+
+                const result = await response.json();
+                log(`✅ Query successful. Final answer received from LLM.`, 'success');
+                answerArea.innerHTML = `<p class="whitespace-pre-wrap">${result.answer}</p>`;
+
+            } catch (error) {
+                log(`❌ Query pipeline failed: ${error.message}`, 'error');
+                answerArea.innerHTML = `<p class="text-red-500">Query Failed. Ensure your Node.js backend is running correctly.</p>`;
+            } finally {
+                // Restore buttons and hide loading state
+                button.disabled = false;
+                indexButton.disabled = false;
+                queryStatusSpinner.classList.add('hidden');
+            }
+        }
+
+
+        // Initial setup
+        window.onload = function() {
+            // Pre-fill textarea with mock content for easy testing
+            document.getElementById('documentText').value = "The quarterly report highlights that the primary driver of growth in Q2 was the successful launch of the 'Project Phoenix' software suite, which secured 15 new enterprise clients. This accounts for a 22% increase in recurring revenue. However, operational efficiency declined due to unexpected supply chain disruptions in the manufacturing division, necessitating a 10% reduction in production targets for the next quarter. The company plans to mitigate this by implementing an alternative supplier strategy by Q4.";
+            queryButton.disabled = false; // Querying is possible after indexing is complete.
+        };
+
+    </script>
+</body>
+</html>

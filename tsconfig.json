@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",            // Required for private fields (#private)
+    "module": "ESNext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,          // Ignore type errors in node_modules
+    "outDir": "./dist",            // Compiled JS output folder
+    "resolveJsonModule": true
+  },
+  "include": ["./**/*.ts"],        // Include all TS files in your project
+  "exclude": ["node_modules"]      // Exclude dependencies
+}
